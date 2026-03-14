@@ -122,9 +122,33 @@ program
       process.exit(1);
     }
 
-    console.log(chalk.cyan(`\n  Checking ${layer} on ${envName}…\n`));
-    // Phase 3 will wire individual checks here
-    console.log(chalk.dim('  (Individual layer checks coming in Phase 3)'));
+    const env = config.envs[envName];
+    const session = loadSession(envName);
+
+    printBanner();
+    console.log(`  Checking ${chalk.bold(layer)} on ${chalk.cyan(envName)}…\n`);
+
+    const checkMap: Record<string, () => Promise<import('./types.js').CheckResult>> = {
+      auth:   () => import('./checks/auth.js').then(m => m.runAuthCheck(env, session)),
+      akamai: () => import('./checks/akamai.js').then(m => m.runAkamaiCheck(env, session)),
+      ping:   () => import('./checks/ping.js').then(m => m.runPingCheck(env, session)),
+      page:   () => import('./checks/page.js').then(m => m.runPageCheck(env, session)),
+    };
+
+    const result = await checkMap[layer]();
+
+    const icon = result.status === 'healthy' ? chalk.green('✓')
+               : result.status === 'degraded' ? chalk.yellow('△')
+               : result.status === 'failing'  ? chalk.red('✗')
+               : chalk.gray('–');
+
+    console.log(`  ${icon}  ${result.summary}\n`);
+    if (result.detail) console.log(chalk.dim(`     ${result.detail}\n`));
+    if (result.nextSteps?.length) {
+      console.log(chalk.bold('  Next steps:'));
+      result.nextSteps.forEach((s, i) => console.log(`    ${i + 1}. ${s}`));
+      console.log();
+    }
   });
 
 // ─── login ────────────────────────────────────────────────────────────────────

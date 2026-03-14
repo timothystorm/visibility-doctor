@@ -24,49 +24,51 @@ type Props = {
   label: string;
   status: CheckStatus;
   summary?: string;
-  latencyMs?: number;
-  /** Whether this card is expanded to show nextSteps */
+  detail?: string;
+  runningMessage?: string;
   expanded?: boolean;
   nextSteps?: string[];
 };
 
-export function LayerCard({ label, status, summary, latencyMs, expanded, nextSteps }: Props) {
+export function LayerCard({ label, status, summary, detail, runningMessage, expanded, nextSteps }: Props) {
   const color = STATUS_COLOR[status];
   const icon = STATUS_ICON[status];
+  const isHotspot = status === 'failing' || status === 'degraded';
+
+  const displaySummary =
+    status === 'running'
+      ? (runningMessage ?? 'checking…')
+      : summary ?? (status === 'pending' ? '—' : '—');
 
   return (
     <Box flexDirection="column">
+      {/* Status row */}
       <Box gap={2}>
-        {/* Status icon */}
-        <Text color={color} bold>
-          {icon}
+        <Text color={color} bold>{icon}</Text>
+        <Text bold={isHotspot} color={color === 'gray' ? undefined : color}>
+          {label.padEnd(14)}
         </Text>
-
-        {/* Layer name */}
-        <Text bold={status === 'failing' || status === 'degraded'} color={color === 'gray' ? undefined : color}>
-          {label.padEnd(20)}
+        <Text dimColor={status === 'pending' || status === 'skipped' || status === 'running'}>
+          {displaySummary}
         </Text>
-
-        {/* Summary */}
-        <Text dimColor={status === 'pending' || status === 'skipped'}>
-          {summary ?? (status === 'running' ? 'checking…' : '—')}
-        </Text>
-
-        {/* Latency badge */}
-        {latencyMs !== undefined && (
-          <Text dimColor>  {latencyMs}ms</Text>
-        )}
       </Box>
 
-      {/* Hotspot drill-down */}
-      {expanded && nextSteps && nextSteps.length > 0 && (
+      {/* Hotspot drill-down — detail + next steps */}
+      {expanded && (
         <Box flexDirection="column" paddingLeft={4} marginTop={1} marginBottom={1}>
-          <Text color="yellow" bold>Next steps:</Text>
-          {nextSteps.map((step, i) => (
-            <Text key={i} color="yellow">
-              {i + 1}. {step}
-            </Text>
-          ))}
+          {detail && (
+            <Box marginBottom={1}>
+              <Text color={color}>{detail}</Text>
+            </Box>
+          )}
+          {nextSteps && nextSteps.length > 0 && (
+            <Box flexDirection="column">
+              <Text bold color={color}>Next steps:</Text>
+              {nextSteps.map((step, i) => (
+                <Text key={i} color={color}>  {i + 1}. {step}</Text>
+              ))}
+            </Box>
+          )}
         </Box>
       )}
     </Box>

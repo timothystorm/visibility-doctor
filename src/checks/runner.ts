@@ -22,6 +22,7 @@ export async function runSweep(
   env: EnvConfig,
   session: Session | null,
   onUpdate: (update: CheckUpdate) => void,
+  onRunning?: (layer: Layer) => void,
 ): Promise<CheckResult[]> {
   const { runAuthCheck } = await import('./auth.js');
   const { runAkamaiCheck } = await import('./akamai.js');
@@ -30,18 +31,22 @@ export async function runSweep(
 
   const results: CheckResult[] = [];
 
+  onRunning?.('auth');
   const authResult = await runAuthCheck(env, session);
   onUpdate({ layer: 'auth', result: authResult });
   results.push(authResult);
 
   // Akamai + ping in parallel — neither needs auth cookies
+  onRunning?.('akamai');
+  onRunning?.('ping');
   const [akamaiResult, pingResult] = await Promise.all([
     runAkamaiCheck(env, session).then((r) => { onUpdate({ layer: r.layer, result: r }); return r; }),
     runPingCheck(env, session).then((r) => { onUpdate({ layer: r.layer, result: r }); return r; }),
   ]);
   results.push(akamaiResult, pingResult);
 
-  // Page load last — needs cookies, and a failed ping is a strong hint to skip
+  // Page load last — needs cookies, opens a real browser window
+  onRunning?.('page');
   const pageResult = await runPageCheck(env, session);
   onUpdate({ layer: 'page', result: pageResult });
   results.push(pageResult);

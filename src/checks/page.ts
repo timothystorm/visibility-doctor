@@ -3,7 +3,7 @@ import type { CheckFn } from './runner.js';
 import type { StoredCookie } from '../types.js';
 import { findSystemChrome } from '../auth/browser.js';
 
-// Full page load thresholds: ≤ 3s GOOD · 3–5s SLOW · > 5s POOR
+// Full page load thresholds: ≤ 3s GOOD PERFORMANCE · 3–5s SLOW PERFORMANCE · > 5s POOR PERFORMANCE
 const SLOW_LOAD_MS = 3_000;
 const POOR_LOAD_MS = 5_000;
 const LOAD_TIMEOUT_MS = 30_000;
@@ -11,9 +11,9 @@ const LOAD_TIMEOUT_MS = 30_000;
 const AUTH_SETTLE_MS = 4_000;
 
 function loadLabel(ms: number): string {
-  if (ms <= SLOW_LOAD_MS) return 'GOOD';
-  if (ms <= POOR_LOAD_MS) return 'SLOW';
-  return 'POOR';
+  if (ms <= SLOW_LOAD_MS) return 'GOOD PERFORMANCE';
+  if (ms <= POOR_LOAD_MS) return 'SLOW PERFORMANCE';
+  return 'POOR PERFORMANCE';
 }
 
 export const runPageCheck: CheckFn = async (env, session) => {
