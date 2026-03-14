@@ -1,0 +1,44 @@
+{
+  "name": "@fedex/visibility-doctor",
+  "version": "0.1.0",
+  "description": "Developer and SRE CLI/TUI for quickly sweeping the visibility app stack to surface hotspots",
+  "main": "dist/cli.js",
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "start": "node bin/vdoc.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.13.6",
+    "chalk": "^5.6.2",
+    "commander": "^14.0.3",
+    "graphql-request": "^7.4.0",
+    "ink": "^6.8.0",
+    "ora": "^9.3.0",
+    "playwright": "^1.58.2",
+    "react": "^19.2.4",
+    "tough-cookie": "^6.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "@types/react": "^19.2.14",
+    "@types/tough-cookie": "^4.0.5",
+    "tsup": "^8.5.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  },
+  "type": "module",
+  "bin": {
+    "vdoc": "bin/vdoc.js"
+  },
+  "files": [
+    "dist",
+    "bin"
+  ],
+  "engines": {
+    "node": ">=18"
+  }
+}
