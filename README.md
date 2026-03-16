@@ -6,30 +6,18 @@ A developer and SRE CLI/TUI for quickly sweeping the visibility app stack during
 
 ## Prerequisites
 
-| Tool | Why | Install |
-|---|---|---|
-| Node.js ≥ 18 | Runtime | [nodejs.org](https://nodejs.org) |
-| Google Chrome | Page load check + login flow | [google.com/chrome](https://www.google.com/chrome) |
-| `just` | Command runner / cheat sheet | `brew install just` |
+| Tool              | Why | Install                                                                       |
+|-------------------|---|-------------------------------------------------------------------------------|
+| Node.js ≥ 22      | Runtime | [nodejs.org](https://nodejs.org)                                              |
+| Google Chrome     | Page load check + login flow | [google.com/chrome](https://www.google.com/chrome)                            |
 
 ---
 
 ## Installation
 
-**Via npx (no install needed):**
+**Repo must be cloned:**
 ```sh
-npx github:your-org/visibility-doctor
-```
-
-**Or install globally:**
-```sh
-npm install -g github:your-org/visibility-doctor
-```
-
-**For team members with the repo cloned:**
-```sh
-npm install
-just link        # builds + links `vdoc` to your PATH
+npm install && npm run build && npm link       # builds + links `vdoc` to your PATH
 ```
 
 ---
@@ -37,23 +25,25 @@ just link        # builds + links `vdoc` to your PATH
 ## Quick start
 
 ```sh
-just             # show all available commands
-just sweep       # launch the interactive TUI
-just login       # open browser to capture your session
+npm run                                   # show all available commands
+npm run sweep                             # launch the interactive TUI
+npm run login                             # open browser to capture your session
+npm run login -- --env [prod|staging]     # login to a specific env
+npm run check -- [akamai|auth|page|ping]  # run a single check layer (auth, akamai, ping, page)  
+npm run config                            # list configured environments
+npm run config:path                       # print the config file location
+npm run config:edit                       # open it in your $EDITOR
+npm run build                             # compile TypeScript → dist/
+npm run dev                               # watch mode
+npm run typecheck                         # type-check without building
+npm run link                              # build + npm link (makes local `vdoc` resolve to your build)
 ```
 
 On first run, a default config is written to `~/.config/vis-doc/config.json`. Edit that file to add your real URLs before sweeping.
 
 ---
 
-## Config
-
-All state lives in `~/.config/vis-doc/`. You can edit, diff, and share configs freely.
-
-```sh
-just config-path   # print the config file location
-just config-edit   # open it in your $EDITOR
-```
+### Config
 
 **Config shape** (`~/.config/vis-doc/config.json`):
 
@@ -71,52 +61,11 @@ just config-edit   # open it in your $EDITOR
 }
 ```
 
-| Field | Required | Description |
-|---|---|---|
-| `loginUrl` | ✓ | The ForgeRock login page URL. Chrome opens here during `vdoc login`. |
-| `baseUrl` | ✓ | The app URL to sweep (ping + page load checks run against this). |
+| Field | Required | Description                                                                                                        |
+|---|---|--------------------------------------------------------------------------------------------------------------------|
+| `loginUrl` | ✓ | The FedEx.com login page URL. Chrome opens here during `vdoc login`.                                               |
+| `baseUrl` | ✓ | The app URL to sweep (ping + page load checks run against this).                                                   |
 | `cookieNames` | ✓ | Cookie names to watch for during login — signals that login is complete. All cookies are captured, not just these. |
-
----
-
-## Commands
-
-### TUI (interactive)
-
-```sh
-just sweep                  # pick an env and sweep all layers interactively
-just sweep-env prod         # sweep a specific env, skip the picker
-```
-
-### Login
-
-```sh
-just login                  # open Chrome to log in (default env)
-just login-env staging      # log in to a specific env
-```
-
-Chrome opens as a normal (non-automated) browser window. Log in manually. Once the session cookies are detected, the browser closes and the session is saved encrypted to `~/.config/vis-doc/sessions/`.
-
-### Single-layer checks
-
-Run one check at a time — useful when you already know the problem area:
-
-```sh
-just check auth             # is the stored session valid and not expired?
-just check akamai           # is the CDN/WAF edge healthy? DNS, cache, WAF blocks
-just check ping             # is the app deployed and returning 200?
-just check page             # does the page fully load? does auth hold?
-
-just check-env page staging # same checks, specific env
-```
-
-### Config
-
-```sh
-just config                 # list configured environments
-just config-path            # print config file path
-just config-edit            # open config in $EDITOR
-```
 
 ---
 
@@ -132,15 +81,15 @@ just config-edit            # open config in $EDITOR
 **Page load summary format:**
 
 ```
-ttfb: 0.21s, fcp: 0.85s, lcp: 1.10s, total load time: 2.34s
+ttfb: 0.21s, fcp: 0.85s,  window.load: 2.34s, lcp: 1.10s
 ```
 
-| Metric | Description |
-|---|---|
-| **TTFB** | Time to First Byte — how quickly the server responds |
-| **FCP** | First Contentful Paint — when the browser renders the first visible content |
-| **LCP** | Largest Contentful Paint — when the main content is visible |
-| **Total load time** | Wall-clock time until the browser `load` event fires |
+| Metric          | Description |
+|-----------------|---|
+| **TTFB**        | Time to First Byte — how quickly the server responds |
+| **FCP**         | First Contentful Paint — when the browser renders the first visible content |
+| **LCP**         | Largest Contentful Paint — when the main content is visible |
+| **window.load** | Wall-clock time until the browser `load` event fires |
 
 **Total load time thresholds** (determine check status):
 
@@ -154,24 +103,13 @@ ttfb: 0.21s, fcp: 0.85s, lcp: 1.10s, total load time: 2.34s
 
 ## How auth works
 
-1. Run `just login` — Chrome opens as a plain OS process (no automation flags, invisible to ForgeRock)
+1. Run `npm run login` — Chrome opens as a plain OS process (no automation flags, invisible to ForgeRock)
 2. Log in manually in the browser window
 3. `vdoc` polls for the signal cookies defined in `cookieNames`
 4. Once detected, **all** session cookies are captured (typically 30–40) and saved encrypted to `~/.config/vis-doc/sessions/<env>.json`
 5. Subsequent sweeps inject these cookies into checks that need auth
 
 Sessions are encrypted with AES-256-GCM. The key is stored at `~/.config/vis-doc/.secret` (mode 0600, never committed).
-
----
-
-## Development
-
-```sh
-just build        # compile TypeScript → dist/
-just dev          # watch mode
-just typecheck    # type-check without building
-just link         # build + npm link (makes local `vdoc` resolve to your build)
-```
 
 ---
 

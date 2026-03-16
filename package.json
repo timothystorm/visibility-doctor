@@ -7,7 +7,14 @@
     "build": "tsup",
     "dev": "tsup --watch",
     "start": "node bin/vdoc.js",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "sweep": "node bin/vdoc.js",
+    "login": "node bin/vdoc.js login",
+    "check": "node bin/vdoc.js check",
+    "config": "node bin/vdoc.js config",
+    "config:path": "node bin/vdoc.js config path",
+    "config:edit": "${EDITOR:-vim} ~/.config/vis-doc/config.json",
+    "link": "npm run build && npm link"
   },
   "author": "",
   "license": "MIT",
