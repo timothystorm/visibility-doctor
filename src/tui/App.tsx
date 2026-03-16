@@ -30,5 +30,12 @@ function App({ envs, defaultEnv }: Props) {
 }
 
 export function launchTui(envs: Record<string, EnvConfig>, defaultEnv: string | undefined) {
-  render(<App envs={envs} defaultEnv={defaultEnv} />);
+  const { waitUntilExit } = render(<App envs={envs} defaultEnv={defaultEnv} />);
+  // On Windows, process.stdin in raw mode holds an active event-loop reference
+  // that survives Ink's internal cleanup (setRawMode(false) / pause()). Without
+  // this, the process hangs after the user presses 'q' even though the TUI has
+  // finished rendering. waitUntilExit() resolves as soon as exit() is called
+  // inside any child component, so process.exit(0) fires only after Ink has
+  // fully unmounted — safe on macOS and the necessary escape hatch on Windows.
+  waitUntilExit().then(() => process.exit(0));
 }

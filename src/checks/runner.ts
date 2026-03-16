@@ -26,7 +26,7 @@ export const SWEEP_ORDER: Layer[] = LAYER_BLOCKS.flat();
 // ─── Runner ───────────────────────────────────────────────────────────────────
 
 /**
- * Determine if the sweep should be continued based on previous results
+ * Determine if the sweep sould be continued based on previous results
  *
  * @param results - to verify is healthy or skipped
  * @return true sweep should continue; false otherwirse

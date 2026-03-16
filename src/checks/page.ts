@@ -1,7 +1,11 @@
 import { chromium } from 'playwright';
+import os from 'node:os';
+import path from 'node:path';
+import fs from 'node:fs';
 import type { CheckFn } from './runner.js';
 import type { StoredCookie } from '../types.js';
-import { findSystemChrome } from '../auth/browser.js';
+import { findSystemChrome, spawnChrome } from '../auth/browser.js';
+import type { ChromeProcess } from '../auth/browser.js';
 
 // Full page load thresholds: ≤ 3s GOOD PERFORMANCE · 3–5s SLOW PERFORMANCE · > 5s POOR PERFORMANCE
 const SLOW_LOAD_MS = 3_000;
@@ -40,17 +44,22 @@ export const runPageCheck: CheckFn = async (env, session) => {
     };
   }
 
-  let browser;
-  try {
-    // Launch the real system Chrome — visible window so you can watch the auth
-    // flow happen (or see a login redirect in real time). Real Chrome means real
-    // timing: no bot-detection interference with page load measurements.
-    browser = await chromium.launch({
-      executablePath: chromePath,
-      headless: false,
-    });
+  // Temp profile — unique per run, cleaned up in `finally`.
+  const tempProfileDir = path.join(os.tmpdir(), `vdoc-page-${Date.now()}`);
+  let chromeProc: ChromeProcess | undefined;
+  let browser: import('playwright').Browser | undefined;
 
-    const context = await browser.newContext();
+  try {
+    // Spawn Chrome as a raw OS process so we hold a kill()-able handle.
+    // Using connectOverCDP() instead of chromium.launch() means browser.close()
+    // only disconnects the CDP session — it does NOT wait for the OS process to
+    // exit. On Windows, chromium.launch()'s browser.close() hangs indefinitely
+    // waiting for Chrome sub-processes to exit; an explicit process.kill() is
+    // the only reliable teardown on both platforms.
+    chromeProc = await spawnChrome(chromePath, tempProfileDir, 'about:blank');
+    browser = await chromium.connectOverCDP(chromeProc.cdpUrl);
+
+    const context = browser.contexts()[0] ?? (await browser.newContext());
 
     // Inject session cookies so the SPA sees an authenticated user
     if (cookies.length > 0) {
@@ -183,6 +192,11 @@ export const runPageCheck: CheckFn = async (env, session) => {
       ],
     };
   } finally {
-    await browser?.close();
+    // Disconnect the CDP client — non-blocking on both platforms.
+    try { await browser?.close(); } catch { /* ignore */ }
+    // Force-kill the Chrome OS process — the only reliable teardown on Windows.
+    try { chromeProc?.process.kill(); } catch { /* already exited */ }
+    // Best-effort profile cleanup (may fail if Chrome still holds file locks).
+    try { fs.rmSync(tempProfileDir, { recursive: true, force: true }); } catch { /* ignore */ }
   }
 };
