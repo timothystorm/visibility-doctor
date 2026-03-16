@@ -127,9 +127,22 @@ just config-edit            # open config in $EDITOR
 | **Auth** | session file | Is the stored session valid and not expired? |
 | **Akamai Edge** | HTTP | Is the CDN/WAF in front? DNS timing, edge latency, cache status, WAF block detection |
 | **Ping** | HTTP (no auth) | Is the app deployed? Server up? Not 404/5xx? |
-| **Page Load** | Real Chrome + cookies | Does the page fully load in a real browser? Did auth hold (no redirect to login)? How fast? |
+| **Page Load** | Real Chrome + cookies | Does the page fully load in a real browser? Did auth hold (no redirect to login)? Reports TTFB, FCP, LCP, and total load time. |
 
-**Page load thresholds:**
+**Page load summary format:**
+
+```
+ttfb: 0.21s, fcp: 0.85s, lcp: 1.10s, total load time: 2.34s
+```
+
+| Metric | Description |
+|---|---|
+| **TTFB** | Time to First Byte — how quickly the server responds |
+| **FCP** | First Contentful Paint — when the browser renders the first visible content |
+| **LCP** | Largest Contentful Paint — when the main content is visible |
+| **Total load time** | Wall-clock time until the browser `load` event fires |
+
+**Total load time thresholds** (determine check status):
 
 | Time | Status |
 |---|---|
