@@ -6,24 +6,18 @@
 default:
     @just --list --unsorted
 
+prod := 'prod'
+
 # ── Sweep ─────────────────────────────────────────────────────────────────────
 
 # Launch the interactive TUI — prompts to pick an environment, then sweeps all layers
 sweep:
     vdoc
 
-# Sweep a specific environment without the picker prompt (e.g. just sweep-env prod)
-sweep-env env:
-    vdoc sweep --env {{env}}
-
 # ── Login ─────────────────────────────────────────────────────────────────────
 
-# Open a real browser window to log in and capture session cookies (default env)
-login:
-    vdoc login
-
-# Login to a specific environment (e.g. just login-env staging)
-login-env env:
+# Open a real browser window to log in and capture session cookies - eg. `$just login [prod]`
+login env=prod:
     vdoc login --env {{env}}
 
 # ── Single-layer checks ───────────────────────────────────────────────────────
@@ -34,12 +28,8 @@ login-env env:
 #   ping    — is the app deployed and responding? (no auth needed)
 #   page    — does the page fully load in a real browser, and does auth hold?
 
-# Run a single layer check on the default env (e.g. just check page)
-check layer:
-    vdoc check {{layer}}
-
-# Run a single layer check on a specific env (e.g. just check-env page staging)
-check-env layer env:
+# Run a single layer check on the default env - eg. `$just check page [prod]`
+check layer env=prod:
     vdoc check {{layer}} --env {{env}}
 
 # ── Config ────────────────────────────────────────────────────────────────────

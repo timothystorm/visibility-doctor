@@ -17,8 +17,7 @@ const VERSION = '0.1.0';
 // ─── Banner ───────────────────────────────────────────────────────────────────
 
 function printBanner() {
-  console.log(chalk.cyan.bold('\n  👁  visibility-doctor') + chalk.dim(`  v${VERSION}`));
-  console.log(chalk.dim('  Full-stack sweep tool for developers and SREs\n'));
+  console.log(chalk.cyan.bold('\n  👁  visibility-doctor') + chalk.dim(`  v${VERSION}\n`));
 }
 
 // ─── First-run notice ─────────────────────────────────────────────────────────

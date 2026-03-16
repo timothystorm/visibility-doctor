@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Box, Text, useInput, useApp } from 'ink';
 import type { CheckResult, CheckStatus, Layer } from '../types.js';
-import { LAYER_ORDER, LAYER_LABELS } from '../types.js';
 import { LayerCard } from './LayerCard.js';
-import { runSweep } from '../checks/runner.js';
+import { runSweep, SWEEP_ORDER } from '../checks/runner.js';
 import { loadSession } from '../auth/session.js';
 import type { EnvConfig } from '../config/types.js';
 
@@ -22,18 +21,27 @@ type Props = {
   env: EnvConfig;
 };
 
+const LAYER_LABELS: Record<Layer, string> = {
+  auth: 'Auth',
+  akamai: 'Akamai Edge',
+  ping: 'Ping',
+  page: 'Page Load',
+};
+
 export function SweepDashboard({ envName, env }: Props) {
   const { exit } = useApp();
 
   const initial: Record<Layer, LayerState> = Object.fromEntries(
-    LAYER_ORDER.map((l) => [l, { status: 'pending' as CheckStatus }]),
+      SWEEP_ORDER.map((l) => [l, { status: 'pending' as CheckStatus }]),
   ) as Record<Layer, LayerState>;
 
   const [layers, setLayers] = useState<Record<Layer, LayerState>>(initial);
   const [done, setDone] = useState(false);
 
   const setLayerRunning = (layer: Layer) =>
-    setLayers((prev) => ({ ...prev, [layer]: { status: 'running' } }));
+    setLayers((prev) => {
+      return { ...prev, [layer]: { status: 'running' } };
+    });
 
   const setLayerResult = (result: CheckResult) =>
     setLayers((prev) => ({
@@ -57,8 +65,8 @@ export function SweepDashboard({ envName, env }: Props) {
     if (done && (input === 'q' || key.escape)) exit();
   });
 
-  const hotspots = LAYER_ORDER
-    .map((l) => layers[l].result)
+  const hotspots = SWEEP_ORDER
+    .map((l) => layers?.[l].result)
     .filter((r): r is CheckResult => !!r && (r.status === 'failing' || r.status === 'degraded'));
 
   return (
@@ -74,8 +82,8 @@ export function SweepDashboard({ envName, env }: Props) {
 
       {/* Layer cards */}
       <Box flexDirection="column">
-        {LAYER_ORDER.map((layer) => {
-          const { status, result } = layers[layer];
+        {SWEEP_ORDER.map((layer) => {
+          const { status, result } = layers?.[layer];
           const isHotspot = status === 'failing' || status === 'degraded';
           return (
             <LayerCard

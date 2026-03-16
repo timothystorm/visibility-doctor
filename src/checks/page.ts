@@ -10,10 +10,20 @@ const LOAD_TIMEOUT_MS = 30_000;
 // Time after `load` for the SPA to execute its auth check and redirect if invalid
 const AUTH_SETTLE_MS = 4_000;
 
-function loadLabel(ms: number): string {
-  if (ms <= SLOW_LOAD_MS) return 'GOOD PERFORMANCE';
-  if (ms <= POOR_LOAD_MS) return 'SLOW PERFORMANCE';
-  return 'POOR PERFORMANCE';
+
+/** Format a millisecond value as a fixed-2 seconds string, or 'n/a' if unavailable. */
+function fmtMs(ms: number): string {
+  return ms > 0 ? `${(ms / 1000).toFixed(2)}s` : 'n/a';
+}
+
+function buildSummary(ttfbMs: number, fcpMs: number, lcpMs: number, loadMs: number): string {
+  return `ttfb: ${fmtMs(ttfbMs)}, fcp: ${fmtMs(fcpMs)}, window.onLoad: ${fmtMs(loadMs)}, lcp: ${fmtMs(lcpMs)}`;
+}
+
+interface PerfMetrics {
+  ttfbMs: number;
+  fcpMs: number;
+  lcpMs: number;
 }
 
 export const runPageCheck: CheckFn = async (env, session) => {
@@ -66,8 +76,24 @@ export const runPageCheck: CheckFn = async (env, session) => {
     }
 
     const page = await context.newPage();
-    const start = Date.now();
 
+    // Inject LCP observer before navigation so it captures the very first paint.
+    // The observer stores the latest LCP candidate on window.__lcp (ms from navigation start).
+    await page.addInitScript(() => {
+      (window as any).__lcp = 0;
+      try {
+        const observer = new PerformanceObserver((list) => {
+          const entries = list.getEntries();
+          const last = entries[entries.length - 1];
+          if (last) (window as any).__lcp = last.startTime;
+        });
+        observer.observe({ type: 'largest-contentful-paint', buffered: true });
+      } catch (_) {
+        // LCP API not supported in this browser/context — __lcp stays 0
+      }
+    });
+
+    const start = Date.now();
     await page.goto(url, { waitUntil: 'load', timeout: LOAD_TIMEOUT_MS });
     const loadMs = Date.now() - start;
 
@@ -75,6 +101,17 @@ export const runPageCheck: CheckFn = async (env, session) => {
     // redirect to the login page if the session is rejected.
     await page.waitForTimeout(AUTH_SETTLE_MS);
     const finalUrl = page.url();
+
+    // Collect Web Vitals from the browser's Performance APIs
+    const { ttfbMs, fcpMs, lcpMs } = await page.evaluate((): PerfMetrics => {
+      const nav = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
+      const paintEntry = performance.getEntriesByType('paint').find((e) => e.name === 'first-contentful-paint');
+      return {
+        ttfbMs: nav?.responseStart ?? 0,
+        fcpMs: paintEntry?.startTime ?? 0,
+        lcpMs: (window as any).__lcp ?? 0,
+      };
+    });
 
     // Detect auth failure via login redirect
     const loginBase = new URL(env.loginUrl).origin + new URL(env.loginUrl).pathname;
@@ -92,8 +129,7 @@ export const runPageCheck: CheckFn = async (env, session) => {
       };
     }
 
-    const label = loadLabel(loadMs);
-    const summary = `${(loadMs / 1000).toFixed(1)}s  ${label}`;
+    const summary = buildSummary(ttfbMs, fcpMs, lcpMs, loadMs);
 
     if (loadMs > POOR_LOAD_MS) {
       return {
@@ -101,7 +137,7 @@ export const runPageCheck: CheckFn = async (env, session) => {
         status: 'failing',
         latencyMs: loadMs,
         summary,
-        detail: `The page fully loaded in ${(loadMs / 1000).toFixed(1)}s — exceeds the ${POOR_LOAD_MS / 1000}s POOR threshold. Users are experiencing severe load delays.`,
+        detail: `Total load ${fmtMs(loadMs)} (ttfb ${fmtMs(ttfbMs)}, fcp ${fmtMs(fcpMs)}, lcp ${fmtMs(lcpMs)}) — exceeds the ${POOR_LOAD_MS / 1000}s POOR threshold. Users are experiencing severe load delays.`,
         nextSteps: [
           'Compare Akamai edge latency to page load time.',
           'If edge is fast but load is slow: JS bundle size or slow API calls are likely the bottleneck.',
@@ -116,7 +152,7 @@ export const runPageCheck: CheckFn = async (env, session) => {
         status: 'degraded',
         latencyMs: loadMs,
         summary,
-        detail: `The page fully loaded in ${(loadMs / 1000).toFixed(1)}s — above the ${SLOW_LOAD_MS / 1000}s SLOW threshold.`,
+        detail: `Total load ${fmtMs(loadMs)} (ttfb ${fmtMs(ttfbMs)}, fcp ${fmtMs(fcpMs)}, lcp ${fmtMs(lcpMs)}) — above the ${SLOW_LOAD_MS / 1000}s SLOW threshold.`,
         nextSteps: [
           'Run sweep again to confirm — may be transient.',
           'Check for slow backend API calls in the browser network tab.',

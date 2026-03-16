@@ -6,20 +6,6 @@ export type Layer =
   | 'ping'
   | 'page';
 
-export const LAYER_ORDER: Layer[] = [
-  'auth',
-  'akamai',
-  'ping',
-  'page',
-];
-
-export const LAYER_LABELS: Record<Layer, string> = {
-  auth: 'Auth',
-  akamai: 'Akamai Edge',
-  ping: 'Ping',
-  page: 'Page Load',
-};
-
 // ─── Check result ─────────────────────────────────────────────────────────────
 
 export type CheckStatus = 'pending' | 'running' | 'healthy' | 'degraded' | 'failing' | 'skipped';
